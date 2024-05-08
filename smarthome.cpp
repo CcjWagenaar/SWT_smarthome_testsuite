@@ -10,10 +10,11 @@
 #define BRIGHTNESS_THRESHOLD    0.1
 #define ENABLE_BUG              0
 #define DEBUG_PRINT             1
+#define SHORT_SLEEP             125ms
+#define LONG_SLEEP              250ms
 uint64_t cycle = 0;
 
 DigitalOut Garden_Lamp(PTB18);
-DigitalOut heater_fan(PTC12);
 DigitalOut redLed(PTB2);
 DigitalOut greenLed(PTB3);
 DigitalIn  Car_Sensor(PTE25);
@@ -32,21 +33,19 @@ void fan_off()          { fan = 0;          }
 void close_garage()     { Garage_Door = 0;  }
 void open_garage()      { 
     Garage_Door = 1;  
-    printf("sleeping...\t"); 
-    ThisThread::sleep_for(500ms); 
-    printf("done!\n"); 
+    if(DEBUG_PRINT) printf("sleeping...\t"); 
+    ThisThread::sleep_for(SHORT_SLEEP); 
+    if(DEBUG_PRINT) printf("done!\n"); 
     close_garage();
 }
 
 void heater_off() {
-    DigitalOut redLed(PTB2);
     redLed = 0;
     pwm3.write(0.0); //heater off
     pwm3.period_ms(10);
 }
 
 void heater_on() {
-    DigitalOut redLed(PTB2);
     redLed = 1;
     pwm3.write(1.0); //heater on
     pwm3.period_ms(10);
@@ -83,7 +82,6 @@ float read_brightness() {
     uint16_t analog_brightness = adc_read(1);
     // Convert 16 bit value to voltage and brightness.
     float brightness = analog_brightness / 65535.0 ;
-
     return brightness;
 }
 
@@ -97,14 +95,12 @@ void write_on_display(char* print_str) {
     // Draw text to the screen
     u8g2_int_t x = 30;
     u8g2_int_t y = 20;
-    const char message[] = "Hello World";
     u8g2_DrawUTF8(&oled, x, y, print_str);
 
     // Put all the changes in the buffer onto the screen.
     u8g2_SendBuffer(&oled);
 }
 
-  //smart-home
 // main() runs in its own thread in the OS
 int main() {
     board_init();
@@ -154,13 +150,13 @@ int main() {
         //from the Inside Temperature Sensor in Degrees Celsius, 
         //as well as the brightness of the Light sensor with a value between 0 (darkest) and 1 (brightest). 
         char display_str[1024];
-        sprintf(display_str, "Temp: %.2fC  Brightness: %.2f/1.0\n", temperature, brightness);
-        printf("%s", display_str);
+        snprintf(display_str, 1024, "Temp: %.2fC  Brightness: %.2f/1.0\n", temperature, brightness);
         write_on_display(display_str);
 
+        if(DEBUG_PRINT) printf("%s", display_str);
         if(DEBUG_PRINT) printf("%llu, Car: %d, heat: %.0f\n", cycle, Car_Sensor.read(), pwm3.read());
         
         cycle++;
-        ThisThread::sleep_for(1000ms);
+        ThisThread::sleep_for(LONG_SLEEP);
     }
 }
